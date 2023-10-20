@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract MyToken is ERC20, Ownable {
+
+contract MyToken is ERC20 {
+    address private _owner; 
     mapping(address => bool) public allowedUsers;
     mapping(address => uint256) public tierLevels;
 
@@ -11,7 +12,7 @@ contract MyToken is ERC20, Ownable {
     event TokensMintedAndSent(address to, uint256 amount);
     event TokensExchanged(address user, uint256 ethSent, uint256 tokensReceived);
     event TokensDistributed(address recipient, uint256 amount, uint256 tierLevel);
-
+    
     constructor(
         string memory name,
         string memory symbol,
@@ -20,7 +21,13 @@ contract MyToken is ERC20, Ownable {
         _mint(msg.sender, initialSupply);
         allowListUser(msg.sender);
         setTierLevel(msg.sender, 1);
+        _owner = msg.sender;
     }
+
+    function owner() public view returns(address)  
+    {  
+        return _owner; 
+    } 
 
     function allowListUser(address user) public onlyOwner {
         allowedUsers[user] = true;
@@ -45,8 +52,8 @@ contract MyToken is ERC20, Ownable {
         emit TokensDistributed(tokenReceiver, tokenAmount, tierLevel);
     }
 
-    function getToken() public payable {
-        require(allowedUsers[msg.sender], "User not allowed");
+    function getToken() public payable onlyAllowed{
+        
         uint256 ethSent = msg.value;
         uint256 tokensToMint = ethSent * 10; // Exchange rate: 1 ETH = 10 Tokens
         uint256 tier = tierLevels[msg.sender];
@@ -62,4 +69,16 @@ contract MyToken is ERC20, Ownable {
         _mint(recipient, tokenAmount);
         emit TokensMintedAndSent(recipient, tokenAmount);
     }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner(), "Only contract owner can call this function");
+        _;
+    }
+
+    modifier onlyAllowed() {
+        require(allowedUsers[msg.sender], "User not allowed");
+        _;
+    }
+    
+
 }
